@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Benefit Activation Report — PolicyPoint</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <style>
+    :root {
+      --primary:       #1F3864;
+      --primary-mid:   #2c4f8a;
+      --primary-light: #4a7ab5;
+      --card-blue:     #BDD7EE;
+      --row-alt:       #DEEAF1;
+      --bg:            #f0f4f8;
+      --white:         #ffffff;
+      --border:        #d0dce8;
+      --text:          #1a2535;
+      --muted:         #5a6a7e;
+      --green:         #1a7a40;
+      --orange:        #c87a10;
+      --red:           #c0392b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    .site-header {
+      background: var(--primary);
+      color: white;
+      padding: 13px 24px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.22);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .site-logo {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      opacity: 0.8;
+    }
+    .site-divider { width: 1px; height: 22px; background: rgba(255,255,255,0.3); }
+    .site-title   { font-size: 17px; font-weight: 600; }
+    .site-meta    {
+      margin-left: auto;
+      font-size: 12px;
+      opacity: 0.6;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    /* ── Layout ── */
+    .main { max-width: 1440px; margin: 0 auto; padding: 18px 20px 40px; }
+
+    /* ── Control panel ── */
+    .panel {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin-bottom: 14px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    }
+    .panel-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 20px;
+    }
+    .panel-row + .panel-row {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+    }
+    .ctrl-group { display: flex; flex-direction: column; gap: 5px; }
+    .ctrl-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--muted);
+    }
+
+    /* Toggle (Date Field) */
+    .toggle-group {
+      display: flex;
+      border: 1px solid var(--primary);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .toggle-btn {
+      padding: 6px 14px;
+      border: none;
+      background: white;
+      color: var(--primary);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: background 0.12s, color 0.12s;
+    }
+    .toggle-btn + .toggle-btn { border-left: 1px solid var(--primary); }
+    .toggle-btn.active { background: var(--primary); color: white; }
+    .toggle-btn:hover:not(.active) { background: var(--row-alt); }
+
+    /* Period buttons */
+    .period-group { display: flex; gap: 6px; flex-wrap: wrap; }
+    .period-btn {
+      padding: 6px 12px;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      background: white;
+      color: var(--text);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+      transition: all 0.12s;
+    }
+    .period-btn.active  { background: var(--primary); color: white; border-color: var(--primary); }
+    .period-btn:hover:not(.active) { border-color: var(--primary); color: var(--primary); }
+
+    /* Date inputs */
+    .date-row { display: flex; align-items: center; gap: 8px; }
+    .date-row input[type="date"] {
+      padding: 6px 8px;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      font-size: 13px;
+      color: var(--text);
+      background: white;
+    }
+    .date-row input[type="date"]:focus { outline: 2px solid var(--primary); }
+    .date-sep { font-size: 12px; color: var(--muted); }
+
+    /* Selects */
+    select {
+      padding: 7px 28px 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      font-size: 13px;
+      background: white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%235a6a7e'/%3E%3C/svg%3E") no-repeat right 10px center;
+      appearance: none;
+      cursor: pointer;
+      min-width: 170px;
+      color: var(--text);
+    }
+    select:focus { outline: 2px solid var(--primary); border-color: var(--primary); }
+
+    /* File uploads */
+    .uploads { display: flex; gap: 10px; flex-wrap: wrap; flex: 1; }
+    .upload-card {
+      flex: 1;
+      min-width: 170px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: border-color 0.15s;
+    }
+    .upload-card.loaded { border-color: #27ae60; background: #f0faf4; }
+    .upload-icon { font-size: 20px; }
+    .upload-info { flex: 1; min-width: 0; }
+    .upload-name { font-size: 12px; font-weight: 700; color: var(--primary); }
+    .upload-status { font-size: 11px; color: var(--muted); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .upload-card.loaded .upload-status { color: #27ae60; }
+    .btn-load {
+      padding: 5px 10px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .btn-load:hover { background: var(--primary-mid); }
+    input[type="file"] { display: none; }
+
+    /* Reset */
+    .btn-reset {
+      padding: 7px 14px;
+      background: white;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-left: auto;
+    }
+    .btn-reset:hover { border-color: var(--primary); color: var(--primary); }
+
+    /* ── Summary cards ── */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    @media (max-width: 1100px) { .cards { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width:  600px) { .cards { grid-template-columns: repeat(2, 1fr); } }
+
+    .card {
+      background: white;
+      border: 1px solid var(--border);
+      border-top: 3px solid var(--primary);
+      border-radius: 8px;
+      padding: 16px 12px;
+      text-align: center;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    }
+    .card-val   { font-size: 28px; font-weight: 700; color: var(--primary); line-height: 1; margin-bottom: 6px; }
+    .card-lbl   { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+    .card.dark  { background: var(--primary); border: none; }
+    .card.dark .card-val, .card.dark .card-lbl { color: white; }
+    .card.dark .card-lbl { opacity: 0.75; }
+    .card-empty { background: var(--bg); border: 1px dashed var(--border); }
+    .card-empty .card-val { color: var(--muted); font-size: 22px; }
+
+    /* ── Data section ── */
+    .data-panel {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+      overflow: hidden;
+    }
+    .data-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 13px 18px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+    }
+    .data-title { font-size: 13px; font-weight: 700; color: var(--primary); }
+    .export-btns { display: flex; gap: 8px; }
+    .btn-export {
+      padding: 6px 14px;
+      border: 1px solid var(--primary);
+      border-radius: 5px;
+      background: white;
+      color: var(--primary);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.12s;
+    }
+    .btn-export:hover { background: var(--primary); color: white; }
+
+    /* ── Table ── */
+    .tbl-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+
+    thead th {
+      background: var(--primary);
+      color: white;
+      padding: 10px 13px;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
+    }
+    thead th:first-child,
+    thead th:nth-child(2) { text-align: left; }
+    thead th:hover { background: var(--primary-mid); }
+    .sort-ic { margin-left: 3px; font-size: 9px; opacity: 0.5; }
+    th.asc  .sort-ic::after { content: '▲'; opacity: 1; }
+    th.desc .sort-ic::after { content: '▼'; opacity: 1; }
+    th:not(.asc):not(.desc) .sort-ic::after { content: '↕'; }
+
+    tbody tr:nth-child(even) { background: var(--row-alt); }
+    tbody tr:nth-child(odd)  { background: white; }
+    tbody tr:hover           { background: #d2e8f7; }
+    tbody tr.row-overall     { background: var(--card-blue) !important; font-weight: 700; }
+
+    td {
+      padding: 9px 13px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    td:first-child, td:nth-child(2) { text-align: left; white-space: normal; }
+    .pct { font-weight: 600; }
+    .g   { color: var(--green);  }
+    .o   { color: var(--orange); }
+    .r   { color: var(--red);    }
+
+    /* ── Empty / error states ── */
+    .empty {
+      padding: 60px 20px;
+      text-align: center;
+      color: var(--muted);
+    }
+    .empty .ei  { font-size: 46px; margin-bottom: 12px; }
+    .empty h3   { font-size: 15px; color: var(--text); margin-bottom: 6px; }
+    .empty p    { font-size: 13px; line-height: 1.6; }
+
+    /* ── PNG snapshot (hidden off-screen) ── */
+    #snap {
+      position: fixed;
+      top: -99999px;
+      left: 0;
+      width: 1200px;
+      background: white;
+      padding: 36px 40px 28px;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+    .sn-header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      padding-bottom: 16px;
+      border-bottom: 3px solid var(--primary);
+      margin-bottom: 22px;
+    }
+    .sn-logo  { font-size: 10px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: var(--primary); opacity: 0.6; margin-bottom: 4px; }
+    .sn-title { font-size: 24px; font-weight: 700; color: var(--primary); }
+    .sn-meta  { font-size: 11px; color: var(--muted); text-align: right; line-height: 1.6; }
+
+    .sn-cards {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 10px;
+      margin-bottom: 22px;
+    }
+    .sn-card {
+      background: var(--primary);
+      border-radius: 8px;
+      padding: 14px 10px;
+      text-align: center;
+    }
+    .sn-val  { font-size: 26px; font-weight: 700; color: white; line-height: 1; }
+    .sn-lbl  { font-size: 9px;  font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: rgba(255,255,255,0.72); margin-top: 5px; }
+
+    .sn-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .sn-table thead th {
+      background: var(--primary);
+      color: white;
+      padding: 9px 12px;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      white-space: nowrap;
+    }
+    .sn-table thead th:first-child,
+    .sn-table thead th:nth-child(2) { text-align: left; }
+    .sn-table tbody td {
+      padding: 8px 12px;
+      text-align: center;
+      border-bottom: 1px solid #e2eaf2;
+      white-space: nowrap;
+    }
+    .sn-table tbody td:first-child,
+    .sn-table tbody td:nth-child(2) { text-align: left; white-space: normal; }
+    .sn-table tbody tr:nth-child(even) { background: var(--row-alt); }
+    .sn-table tbody tr.row-overall     { background: var(--card-blue); font-weight: 700; }
+
+    .sn-footer {
+      margin-top: 22px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      font-size: 10px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ─────────────────────────────────────────────────── -->
+<header class="site-header">
+  <span class="site-logo">PolicyPoint</span>
+  <div class="site-divider"></div>
+  <span class="site-title">Benefit Activation Report</span>
+  <span class="site-meta" id="hdr-range">No date selected</span>
+  <a href="admin.html" style="margin-left:12px;font-size:11px;color:rgba(255,255,255,0.5);text-decoration:none;" title="Admin: update data">⚙ Admin</a>
+</header>
+
+<!-- data-loaded banner (hidden until auto-load succeeds) -->
+<div id="data-banner" style="display:none;background:#1a7a40;color:white;padding:7px 24px;font-size:12px;display:none;align-items:center;gap:8px;">
+  <span>✓ Data loaded from server</span>
+  <span id="data-banner-ts" style="opacity:0.7;"></span>
+  <a href="admin.html" style="margin-left:auto;color:rgba(255,255,255,0.8);font-size:11px;">Update data →</a>
+</div>
+
+<div class="main">
+
+  <!-- ── Controls ─────────────────────────────────────────────── -->
+  <div class="panel">
+    <!-- Row 1: Date field + Period + Range -->
+    <div class="panel-row">
+      <div class="ctrl-group">
+        <span class="ctrl-label">Date Field</span>
+        <div class="toggle-group">
+          <button class="toggle-btn active" id="tb-submit"    onclick="setField('submit')">App Submit Date</button>
+          <button class="toggle-btn"        id="tb-effective" onclick="setField('effective')">Effective Date</button>
+        </div>
+      </div>
+
+      <div class="ctrl-group">
+        <span class="ctrl-label">Period</span>
+        <div class="period-group">
+          <button class="period-btn" id="pd-thismonth" onclick="setPeriod('thismonth')">This Month</button>
+          <button class="period-btn" id="pd-prevmonth" onclick="setPeriod('prevmonth')">Prev Month</button>
+          <button class="period-btn" id="pd-aep"       onclick="setPeriod('aep')">AEP</button>
+          <button class="period-btn" id="pd-oep"       onclick="setPeriod('oep')">OEP</button>
+          <button class="period-btn" id="pd-sep"       onclick="setPeriod('sep')">SEP</button>
+          <button class="period-btn active" id="pd-custom" onclick="setPeriod('custom')">Custom</button>
+        </div>
+      </div>
+
+      <div class="ctrl-group">
+        <span class="ctrl-label">Date Range</span>
+        <div class="date-row">
+          <input type="date" id="dt-start" onchange="onCustomDate()">
+          <span class="date-sep">to</span>
+          <input type="date" id="dt-end"   onchange="onCustomDate()">
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 2: Filters -->
+    <div class="panel-row">
+      <div class="ctrl-group">
+        <span class="ctrl-label">Writing Agent</span>
+        <select id="f-agent" onchange="refresh()">
+          <option value="">All Agents</option>
+        </select>
+      </div>
+      <div class="ctrl-group">
+        <span class="ctrl-label">Manager</span>
+        <select id="f-manager" onchange="refresh()">
+          <option value="">All Managers</option>
+        </select>
+      </div>
+      <button class="btn-reset" onclick="resetAll()">↺ Reset Filters</button>
+    </div>
+
+    <!-- Row 3: File uploads -->
+    <div class="panel-row">
+      <span class="ctrl-label" style="align-self:center;white-space:nowrap;">Data Files</span>
+      <div class="uploads">
+        <div class="upload-card" id="uc-detail">
+          <span class="upload-icon">📋</span>
+          <div class="upload-info">
+            <div class="upload-name">Detail Report</div>
+            <div class="upload-status" id="us-detail">Checking…</div>
+          </div>
+          <button class="btn-load" onclick="document.getElementById('fi-detail').click()">⬆ Override</button>
+          <input type="file" id="fi-detail" accept=".csv" onchange="loadCSV('detail',this)">
+        </div>
+        <div class="upload-card" id="uc-policy">
+          <span class="upload-icon">📄</span>
+          <div class="upload-info">
+            <div class="upload-name">PolicyIndividuals</div>
+            <div class="upload-status" id="us-policy">Checking…</div>
+          </div>
+          <button class="btn-load" onclick="document.getElementById('fi-policy').click()">⬆ Override</button>
+          <input type="file" id="fi-policy" accept=".csv" onchange="loadCSV('policy',this)">
+        </div>
+        <div class="upload-card" id="uc-calls">
+          <span class="upload-icon">📞</span>
+          <div class="upload-info">
+            <div class="upload-name">Calls</div>
+            <div class="upload-status" id="us-calls">Checking…</div>
+          </div>
+          <button class="btn-load" onclick="document.getElementById('fi-calls').click()">⬆ Override</button>
+          <input type="file" id="fi-calls" accept=".csv" onchange="loadCSV('calls',this)">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Summary cards ─────────────────────────────────────────── -->
+  <div class="cards" id="cards">
+    <div class="card card-empty"><div class="card-val">—</div><div class="card-lbl">Total Enrollments</div></div>
+    <div class="card card-empty"><div class="card-val">—</div><div class="card-lbl">Total Completed</div></div>
+    <div class="card card-empty"><div class="card-val">—</div><div class="card-lbl">Total Completed %</div></div>
+    <div class="card card-empty"><div class="card-val">—</div><div class="card-lbl">Total Attempted</div></div>
+    <div class="card card-empty"><div class="card-val">—</div><div class="card-lbl">Total Attempted %</div></div>
+    <div class="card card-empty"><div class="card-val">—</div><div class="card-lbl">Total Overall %</div></div>
+  </div>
+
+  <!-- ── Data table ─────────────────────────────────────────────── -->
+  <div class="data-panel">
+    <div class="data-header">
+      <span class="data-title">Agent Summary</span>
+      <div class="export-btns">
+        <button class="btn-export" onclick="exportCSV()">⬇ CSV</button>
+        <button class="btn-export" onclick="exportPNG()">⬇ PNG Report</button>
+      </div>
+    </div>
+    <div class="tbl-wrap">
+      <div id="tbl-area">
+        <div class="empty">
+          <div class="ei">📊</div>
+          <h3>No data loaded yet</h3>
+          <p>Upload the <strong>Detail Report CSV</strong> to get started.<br>
+          PolicyIndividuals + Calls CSVs unlock Attempted metrics.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── PNG Snapshot (off-screen render target) ── -->
+<div id="snap"></div>
+
+<script>
+// ────────────────────────────────────────────────────────────────
+// Manager roster (from Call Criteria Roster – Jul 2026)
+// ────────────────────────────────────────────────────────────────
+const MGR = {
+  'aleccia wright':          'Brian Henderson',
+  'amber arthur':            'Training',
+  'andrea morris':           'John Tellez',
+  'anthony boyle':           'John Tellez',
+  'asia vann':               'Brian Henderson',
+  'bernie livingston':       'Brian Henderson',
+  'carlos vintimilla':       'John Tellez',
+  'celestina pena':          'Training',
+  'chizimuzo ilokwu':        'Jamar Soria',
+  'christina nguyen':        'Nesia Jefferies',
+  'christy mobley':          'Training',
+  'daniel gereaux':          'Training',
+  'davis khauka':            'John Tellez',
+  'dorit rodriguez':         'Training',
+  'duane kipp':              'Nesia Jefferies',
+  'earnestein holton':       'John Tellez',
+  'elisha calhoun':          'Training',
+  'gary johnson':            'Nesia Jefferies',
+  'gary prince':             'Jamar Soria',
+  'gocky ma':                'Jamar Soria',
+  'jacob michael luffman':   'Brian Henderson',
+  'jaeden collins':          'Brian Henderson',
+  'james bye':               'Training',
+  'jamil benton':            'Training',
+  'jasmin johnson':          'Nesia Jefferies',
+  'jessica follette':        'Training',
+  'jessica laster':          'Nesia Jefferies',
+  'jessica lord':            'Jamar Soria',
+  'jonathan weary':          'John Tellez',
+  'joseph thornton':         'Jamar Soria',
+  'kevin jacobs':            'Jamar Soria',
+  'kevin ortega':            'John Tellez',
+  'kierstin thornsberry':    'Jamar Soria',
+  'kylie demarino':          'John Tellez',
+  'mandi jones':             'Nesia Jefferies',
+  'marvonique watts-golden': 'John Tellez',
+  'mitchell lamont':         'John Tellez',
+  'mosenique clifton':       'Training',
+  'neelam shahab':           'Brian Henderson',
+  'quincine cansler':        'Jamar Soria',
+  'rachelle vilme':          'Brian Henderson',
+  'rene n. king':            'Nesia Jefferies',
+  'robert lang':             'Nesia Jefferies',
+  'roberta averette':        'Training',
+  'robin oquin':             'Brian Henderson',
+  'ronnette summey':         'Nesia Jefferies',
+  'ryan lefler':             'Brian Henderson',
+  'sara jarrell':            'John Tellez',
+  'savannah burke':          'Training',
+  'savannah hollis':         'Brian Henderson',
+  'shanae kisi':             'Brian Henderson',
+  'shicora becton':          'Nesia Jefferies',
+  'stephen gibson':          'Training',
+  'tavon todd':              'Brian Henderson',
+  'thomas sonntag':          'Brian Henderson',
+  'tiera jones':             'John Tellez',
+  'tiyanna walton':          'Nesia Jefferies',
+  'tonja howard':            'Brian Henderson',
+  'victor filimonchuk':      'John Tellez',
+  'vidal fakondo':           'Brian Henderson',
+  'whitney benoit':          'Brian Henderson',
+  'whitney dantzler':        'Nesia Jefferies',
+  'zachary copley':          'John Tellez',
+};
+
+function mgr(name) {
+  if (!name) return '—';
+  return MGR[name.trim().toLowerCase()] || '—';
+}
+
+// ────────────────────────────────────────────────────────────────
+// State
+// ────────────────────────────────────────────────────────────────
+let detail = null, policy = null, calls = null;
+let result = null;
+let dateField = 'submit';
+let activePeriod = 'custom';
+let sortKey = 'agent', sortDir = 'asc';
+
+// ────────────────────────────────────────────────────────────────
+// Utilities
+// ────────────────────────────────────────────────────────────────
+function norm(v) {
+  return (v == null ? '' : String(v)).replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+}
+
+function findCol(headers, candidates) {
+  const lc = headers.map(h => (h || '').toLowerCase().trim());
+  for (const c of candidates) {
+    const i = lc.indexOf(c.toLowerCase());
+    if (i >= 0) return headers[i];
+  }
+  for (const c of candidates) {
+    const i = lc.findIndex(h => h.includes(c.toLowerCase()));
+    if (i >= 0) return headers[i];
+  }
+  return null;
+}
+
+function parseDate(v) {
+  if (!v) return null;
+  const s = String(v).trim();
+  // MM/DD/YYYY
+  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (m) return new Date(+m[3], +m[1]-1, +m[2]);
+  const d = new Date(s);
+  return isNaN(d) ? null : d;
+}
+
+function toISO(d) { return d.toISOString().split('T')[0]; }
+
+function pct(n, d) { return d ? +(n / d * 100).toFixed(1) : 0; }
+
+function pClass(p) { return p >= 70 ? 'g' : p >= 40 ? 'o' : 'r'; }
+
+function fmt(n) { return (n ?? '—').toLocaleString ? n.toLocaleString() : n; }
+
+// ────────────────────────────────────────────────────────────────
+// Period helpers
+// ────────────────────────────────────────────────────────────────
+function periodDates(p) {
+  const n = new Date(), y = n.getFullYear(), m = n.getMonth();
+  switch (p) {
+    case 'thismonth': return [new Date(y,m,1),   new Date(y,m+1,0)];
+    case 'prevmonth': return [new Date(y,m-1,1), new Date(y,m,0)];
+    case 'aep': {
+      const ay = m >= 9 ? y : y-1;
+      return [new Date(ay,9,15), new Date(ay,11,7)];
+    }
+    case 'oep':  return [new Date(y,0,1), new Date(y,2,31)];
+    case 'sep':  return [new Date(y,m-3,1), new Date(y,m+1,0)];
+    default: return null;
+  }
+}
+
+// ────────────────────────────────────────────────────────────────
+// UI – date field / period
+// ────────────────────────────────────────────────────────────────
+function setField(f) {
+  dateField = f;
+  document.getElementById('tb-submit').classList.toggle('active',    f === 'submit');
+  document.getElementById('tb-effective').classList.toggle('active', f === 'effective');
+  refresh();
+}
+
+function setPeriod(p) {
+  activePeriod = p;
+  ['thismonth','prevmonth','aep','oep','sep','custom'].forEach(id =>
+    document.getElementById('pd-' + id).classList.toggle('active', id === p));
+  if (p !== 'custom') {
+    const [s, e] = periodDates(p);
+    document.getElementById('dt-start').value = toISO(s);
+    document.getElementById('dt-end').value   = toISO(e);
+  }
+  refresh();
+}
+
+function onCustomDate() {
+  activePeriod = 'custom';
+  ['thismonth','prevmonth','aep','oep','sep'].forEach(id =>
+    document.getElementById('pd-' + id).classList.remove('active'));
+  document.getElementById('pd-custom').classList.add('active');
+  refresh();
+}
+
+function resetAll() {
+  document.getElementById('f-agent').value   = '';
+  document.getElementById('f-manager').value = '';
+  document.getElementById('dt-start').value  = '';
+  document.getElementById('dt-end').value    = '';
+  setPeriod('custom');
+}
+
+// ────────────────────────────────────────────────────────────────
+// Auto-load: fetch CSVs from /data/ on page load
+// ────────────────────────────────────────────────────────────────
+async function autoLoad() {
+  const files = [
+    { type: 'detail', url: './data/detail.csv' },
+    { type: 'policy', url: './data/policy.csv' },
+    { type: 'calls',  url: './data/calls.csv'  },
+  ];
+
+  let anyLoaded = false;
+  let loadedTs  = '';
+
+  for (const { type, url } of files) {
+    const statusEl = document.getElementById('us-' + type);
+    const cardEl   = document.getElementById('uc-' + type);
+    try {
+      const res = await fetch(url + '?v=' + Date.now()); // cache-bust
+      if (!res.ok) { statusEl.textContent = 'Not found — upload via Admin'; continue; }
+
+      // Check for a timestamp header written by admin upload
+      const ts = res.headers.get('x-data-updated') || '';
+      if (ts && !loadedTs) loadedTs = ts;
+
+      const text = await res.text();
+      Papa.parse(text, {
+        header: true,
+        skipEmptyLines: true,
+        complete(parsed) {
+          const rows = parsed.data;
+          statusEl.textContent = rows.length.toLocaleString() + ' rows (server)';
+          cardEl.classList.add('loaded');
+          if (type === 'detail') { detail = rows; populateFilters(rows); }
+          else if (type === 'policy') { policy = rows; }
+          else { calls = rows; }
+          anyLoaded = true;
+          refresh();
+        }
+      });
+    } catch(_) {
+      statusEl.textContent = 'Not found — upload via Admin';
+    }
+  }
+
+  // Show green banner if at least detail loaded
+  if (detail) {
+    const banner = document.getElementById('data-banner');
+    banner.style.display = 'flex';
+    if (loadedTs) document.getElementById('data-banner-ts').textContent = '· Last updated ' + loadedTs;
+  }
+}
+
+// ────────────────────────────────────────────────────────────────
+// File loading (manual override)
+// ────────────────────────────────────────────────────────────────
+function loadCSV(type, inp) {
+  const file = inp.files[0];
+  if (!file) return;
+  document.getElementById('us-' + type).textContent = 'Loading…';
+
+  Papa.parse(file, {
+    header: true,
+    skipEmptyLines: true,
+    complete(res) {
+      const rows = res.data;
+      document.getElementById('us-' + type).textContent = rows.length.toLocaleString() + ' rows';
+      document.getElementById('uc-' + type).classList.add('loaded');
+
+      if (type === 'detail') {
+        detail = rows;
+        populateFilters(rows);
+      } else if (type === 'policy') {
+        policy = rows;
+      } else {
+        calls = rows;
+      }
+      refresh();
+    },
+    error(err) {
+      document.getElementById('us-' + type).textContent = 'Error: ' + err.message;
+    }
+  });
+}
+
+function populateFilters(rows) {
+  if (!rows.length) return;
+  const h = Object.keys(rows[0]);
+  const agentCol = findCol(h, ['Writing Agent Name','Writing Agent','WritingAgent',
+                               'Agent Name','AgentName','Agent']);
+  if (!agentCol) return;
+
+  const agents = [...new Set(rows.map(r => (r[agentCol]||'').trim()).filter(Boolean))].sort();
+
+  const asel = document.getElementById('f-agent');
+  asel.innerHTML = '<option value="">All Agents</option>';
+  agents.forEach(a => { const o = new Option(a,a); asel.appendChild(o); });
+
+  const managers = [...new Set(agents.map(a => mgr(a)).filter(m => m !== '—'))].sort();
+  const msel = document.getElementById('f-manager');
+  msel.innerHTML = '<option value="">All Managers</option>';
+  managers.forEach(m => { const o = new Option(m,m); msel.appendChild(o); });
+}
+
+// ────────────────────────────────────────────────────────────────
+// Main processing
+// ────────────────────────────────────────────────────────────────
+function refresh() {
+  if (!detail) { renderEmpty(); return; }
+
+  const h = Object.keys(detail[0] || {});
+  const agentCol    = findCol(h, ['Writing Agent Name','Writing Agent','WritingAgent',
+                                  'Agent Name','AgentName','Agent']);
+  const advocateCol = findCol(h, ['Advocate','advocate']);
+  const mbiCol      = findCol(h, ['Mbi','MBI','mbi','Member ID','MemberID']);
+
+  if (!agentCol) { renderErr('Cannot find Writing Agent column in Detail Report.'); return; }
+
+  // Date column
+  let dateCol = null;
+  if (dateField === 'submit') {
+    dateCol = findCol(h, ['App Submit Date','AppSubmitDate','Submit Date','SubmitDate',
+                          'Application Submit Date','Application Date','AppDate',
+                          'Date Submitted','DateSubmitted']);
+  } else {
+    dateCol = findCol(h, ['Effective Date','EffectiveDate','Effective','Coverage Date',
+                          'CoverageDate','Start Date','StartDate','PlanStartDate']);
+  }
+
+  // Date bounds
+  const sStr = document.getElementById('dt-start').value;
+  const eStr = document.getElementById('dt-end').value;
+  const sDate = sStr ? new Date(sStr + 'T00:00:00') : null;
+  const eDate = eStr ? new Date(eStr + 'T23:59:59') : null;
+
+  // Header label
+  if (sDate || eDate) {
+    const f = d => d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    const lbl = dateField === 'submit' ? 'App Submit' : 'Effective';
+    document.getElementById('hdr-range').textContent =
+      lbl + ': ' + (sDate ? f(sDate) : '…') + ' – ' + (eDate ? f(eDate) : '…');
+  } else {
+    document.getElementById('hdr-range').textContent = 'All dates';
+  }
+
+  // Filter by date
+  let rows = detail;
+  if ((sDate || eDate) && dateCol) {
+    rows = detail.filter(r => {
+      const d = parseDate(r[dateCol]);
+      if (!d) return false;
+      if (sDate && d < sDate) return false;
+      if (eDate && d > eDate) return false;
+      return true;
+    });
+  }
+
+  // Agent / Manager filters
+  const af = document.getElementById('f-agent').value;
+  const mf = document.getElementById('f-manager').value;
+  if (af) rows = rows.filter(r => (r[agentCol]||'').trim() === af);
+  if (mf) rows = rows.filter(r => mgr((r[agentCol]||'').trim()) === mf);
+
+  // Build calls phone set
+  const callSet = new Set();
+  if (calls && calls.length) {
+    const ch = Object.keys(calls[0]);
+    const pc = findCol(ch, ['phone_number_dialed','phone_number','Phone','PhoneNumber',
+                            'Phone Number','Number','Called','To','From','Caller','ANI','DNIS']);
+    if (pc) calls.forEach(r => { const n = norm(r[pc]); if (n) callSet.add(n); });
+  }
+
+  // Build MBI → phones map
+  const mbiPh = {};
+  if (policy && policy.length && mbiCol) {
+    const ph2 = Object.keys(policy[0]);
+    const pm  = findCol(ph2, ['Mbi','MBI','mbi','Member ID','MemberID']);
+    const pks = ['phone','number','cell','mobile','contact','tel'];
+    const phoneCols = ph2.filter(c => pks.some(k => c.toLowerCase().includes(k)));
+    if (pm) {
+      policy.forEach(r => {
+        const mb = norm(r[pm]); if (!mb) return;
+        if (!mbiPh[mb]) mbiPh[mb] = new Set();
+        phoneCols.forEach(c => { const n = norm(r[c]); if (n) mbiPh[mb].add(n); });
+      });
+    }
+  }
+
+  function attempted(mb) {
+    const s = mbiPh[mb];
+    if (!s || !s.size || !callSet.size) return false;
+    for (const p of s) if (callSet.has(p)) return true;
+    return false;
+  }
+
+  // Aggregate: agent → { mbi → completed }
+  const agMap = {};
+  rows.forEach(r => {
+    const ag = (r[agentCol]||'').trim(); if (!ag) return;
+    const mb = mbiCol ? norm(r[mbiCol]) : norm(Object.values(r)[0]);
+    const done = advocateCol
+      ? (r[advocateCol] != null && String(r[advocateCol]).trim() !== '')
+      : false;
+    if (!agMap[ag]) agMap[ag] = {};
+    if (!agMap[ag][mb]) agMap[ag][mb] = false;
+    if (done) agMap[ag][mb] = true;
+  });
+
+  // Per-agent metrics
+  const agRows = Object.entries(agMap).map(([ag, mmap]) => {
+    const entries   = Object.entries(mmap);
+    const total     = entries.length;
+    const compN     = entries.filter(([,v]) => v).length;
+    const atmpN     = entries.filter(([mb, v]) => !v && attempted(mb)).length;
+    return {
+      agent:        ag,
+      manager:      mgr(ag),
+      total,
+      completed:    compN,
+      completedPct: pct(compN, total),
+      attempted:    atmpN,
+      attemptedPct: pct(atmpN, total),
+      overallPct:   pct(compN + atmpN, total),
+    };
+  });
+
+  // Sort
+  agRows.sort((a, b) => {
+    const av = a[sortKey], bv = b[sortKey];
+    const c  = typeof av === 'string' ? av.localeCompare(bv) : av - bv;
+    return sortDir === 'asc' ? c : -c;
+  });
+
+  // Overall (unique MBIs across all agents, respecting agent/mgr filter)
+  const allMbi = {};
+  rows.forEach(r => {
+    const ag = (r[agentCol]||'').trim();
+    if (af && ag !== af) return;
+    if (mf && mgr(ag) !== mf) return;
+    const mb   = mbiCol ? norm(r[mbiCol]) : norm(Object.values(r)[0]);
+    if (!mb) return;
+    const done = advocateCol
+      ? (r[advocateCol] != null && String(r[advocateCol]).trim() !== '')
+      : false;
+    if (!allMbi[mb]) allMbi[mb] = false;
+    if (done) allMbi[mb] = true;
+  });
+
+  const ov = Object.entries(allMbi);
+  const oT = ov.length;
+  const oC = ov.filter(([,v]) => v).length;
+  const oA = ov.filter(([mb,v]) => !v && attempted(mb)).length;
+
+  const overall = {
+    total:        oT,
+    completed:    oC,
+    completedPct: pct(oC, oT),
+    attempted:    oA,
+    attemptedPct: pct(oA, oT),
+    overallPct:   pct(oC+oA, oT),
+  };
+
+  result = { overall, agents: agRows, range: document.getElementById('hdr-range').textContent };
+  renderCards(overall);
+  renderTable(agRows, overall);
+}
+
+// ────────────────────────────────────────────────────────────────
+// Render
+// ────────────────────────────────────────────────────────────────
+function renderCards(o) {
+  const defs = [
+    { lbl: 'Total Enrollments', val: fmt(o.total) },
+    { lbl: 'Total Completed',   val: fmt(o.completed) },
+    { lbl: 'Total Completed %', val: o.completedPct + '%' },
+    { lbl: 'Total Attempted',   val: fmt(o.attempted) },
+    { lbl: 'Total Attempted %', val: o.attemptedPct + '%' },
+    { lbl: 'Total Overall %',   val: o.overallPct + '%', dark: true },
+  ];
+  document.getElementById('cards').innerHTML = defs.map(d =>
+    `<div class="card ${d.dark ? 'dark' : ''}">
+       <div class="card-val">${d.val}</div>
+       <div class="card-lbl">${d.lbl}</div>
+     </div>`).join('');
+}
+
+const COLS = [
+  { key:'agent',        lbl:'Writing Agent' },
+  { key:'manager',      lbl:'Manager' },
+  { key:'total',        lbl:'Total Enrollments' },
+  { key:'completed',    lbl:'Total Completed' },
+  { key:'completedPct', lbl:'Total Completed %' },
+  { key:'attempted',    lbl:'Total Attempted' },
+  { key:'attemptedPct', lbl:'Total Attempted %' },
+  { key:'overallPct',   lbl:'Total Overall %' },
+];
+
+function renderTable(rows, overall) {
+  const area = document.getElementById('tbl-area');
+  if (!rows.length) {
+    area.innerHTML = `<div class="empty"><div class="ei">🔍</div>
+      <h3>No results for selected filters</h3>
+      <p>Try adjusting the date range, agent, or manager filters.</p></div>`;
+    return;
+  }
+
+  const ths = COLS.map(c => {
+    const cls = sortKey === c.key ? sortDir : '';
+    return `<th class="${cls}" onclick="doSort('${c.key}')">${c.lbl}<span class="sort-ic"></span></th>`;
+  }).join('');
+
+  function oRow(o) {
+    return `<tr class="row-overall">
+      <td>OVERALL</td><td>—</td>
+      <td>${fmt(o.total)}</td><td>${fmt(o.completed)}</td>
+      <td class="pct ${pClass(o.completedPct)}">${o.completedPct}%</td>
+      <td>${fmt(o.attempted)}</td>
+      <td class="pct ${pClass(o.attemptedPct)}">${o.attemptedPct}%</td>
+      <td class="pct ${pClass(o.overallPct)}">${o.overallPct}%</td>
+    </tr>`;
+  }
+
+  const body = rows.map(r =>
+    `<tr>
+      <td>${r.agent}</td><td>${r.manager}</td>
+      <td>${fmt(r.total)}</td><td>${fmt(r.completed)}</td>
+      <td class="pct ${pClass(r.completedPct)}">${r.completedPct}%</td>
+      <td>${fmt(r.attempted)}</td>
+      <td class="pct ${pClass(r.attemptedPct)}">${r.attemptedPct}%</td>
+      <td class="pct ${pClass(r.overallPct)}">${r.overallPct}%</td>
+    </tr>`).join('');
+
+  area.innerHTML = `<table>
+    <thead><tr>${ths}</tr></thead>
+    <tbody>${oRow(overall)}${body}</tbody>
+  </table>`;
+}
+
+function renderEmpty() {
+  document.getElementById('cards').innerHTML = `
+    <div class="card card-empty"><div class="card-val">—</div><div class="card-lbl">Total Enrollments</div></div>
+    <div class="card card-empty"><div class="card-val">—</div><div class="card-lbl">Total Completed</div></div>
+    <div class="card card-empty"><div class="card-val">—</div><div class="card-lbl">Total Completed %</div></div>
+    <div class="card card-empty"><div class="card-val">—</div><div class="card-lbl">Total Attempted</div></div>
+    <div class="card card-empty"><div class="card-val">—</div><div class="card-lbl">Total Attempted %</div></div>
+    <div class="card card-empty"><div class="card-val">—</div><div class="card-lbl">Total Overall %</div></div>`;
+  document.getElementById('tbl-area').innerHTML = `<div class="empty">
+    <div class="ei">📊</div>
+    <h3>No data loaded yet</h3>
+    <p>Upload the <strong>Detail Report CSV</strong> to get started.<br>
+    PolicyIndividuals + Calls CSVs unlock Attempted metrics.</p></div>`;
+}
+
+function renderErr(msg) {
+  document.getElementById('tbl-area').innerHTML =
+    `<div class="empty"><div class="ei">⚠️</div><h3>Error</h3><p>${msg}</p></div>`;
+}
+
+// ────────────────────────────────────────────────────────────────
+// Sort
+// ────────────────────────────────────────────────────────────────
+function doSort(key) {
+  if (sortKey === key) { sortDir = sortDir === 'asc' ? 'desc' : 'asc'; }
+  else { sortKey = key; sortDir = 'asc'; }
+  if (result) {
+    const sorted = [...result.agents].sort((a,b) => {
+      const av = a[sortKey], bv = b[sortKey];
+      const c  = typeof av === 'string' ? av.localeCompare(bv) : av - bv;
+      return sortDir === 'asc' ? c : -c;
+    });
+    renderTable(sorted, result.overall);
+  }
+}
+
+// ────────────────────────────────────────────────────────────────
+// CSV Export
+// ────────────────────────────────────────────────────────────────
+function exportCSV() {
+  if (!result) return alert('No data to export.');
+  const { overall: o, agents } = result;
+  const hdr = ['Writing Agent','Manager','Total Enrollments','Total Completed',
+               'Total Completed %','Total Attempted','Total Attempted %','Total Overall %'];
+  const rows = [
+    hdr,
+    ['OVERALL','—',o.total,o.completed,o.completedPct+'%',o.attempted,o.attemptedPct+'%',o.overallPct+'%'],
+    ...agents.map(r => [r.agent,r.manager,r.total,r.completed,r.completedPct+'%',
+                        r.attempted,r.attemptedPct+'%',r.overallPct+'%'])
+  ];
+  const csv  = rows.map(r => r.map(v => '"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\r\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const a = Object.assign(document.createElement('a'), {
+    href: URL.createObjectURL(blob),
+    download: 'BAT_Report_' + new Date().toISOString().slice(0,10) + '.csv'
+  });
+  a.click();
+}
+
+// ────────────────────────────────────────────────────────────────
+// PNG Export
+// ────────────────────────────────────────────────────────────────
+function exportPNG() {
+  if (!result) return alert('No data to export.');
+  const { overall: o, agents, range } = result;
+  const now = new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+
+  const cards = [
+    {lbl:'Total Enrollments', val:fmt(o.total)},
+    {lbl:'Total Completed',   val:fmt(o.completed)},
+    {lbl:'Total Completed %', val:o.completedPct+'%'},
+    {lbl:'Total Attempted',   val:fmt(o.attempted)},
+    {lbl:'Total Attempted %', val:o.attemptedPct+'%'},
+    {lbl:'Total Overall %',   val:o.overallPct+'%'},
+  ].map(c =>
+    `<div class="sn-card"><div class="sn-val">${c.val}</div><div class="sn-lbl">${c.lbl}</div></div>`
+  ).join('');
+
+  const overallRow = `<tr class="row-overall">
+    <td>OVERALL</td><td>—</td>
+    <td>${fmt(o.total)}</td><td>${fmt(o.completed)}</td><td>${o.completedPct}%</td>
+    <td>${fmt(o.attempted)}</td><td>${o.attemptedPct}%</td><td>${o.overallPct}%</td>
+  </tr>`;
+
+  const body = agents.map(r =>
+    `<tr>
+      <td>${r.agent}</td><td>${r.manager}</td>
+      <td>${r.total}</td><td>${r.completed}</td><td>${r.completedPct}%</td>
+      <td>${r.attempted}</td><td>${r.attemptedPct}%</td><td>${r.overallPct}%</td>
+    </tr>`).join('');
+
+  const snap = document.getElementById('snap');
+  snap.innerHTML = `
+    <div class="sn-header">
+      <div>
+        <div class="sn-logo">PolicyPoint</div>
+        <div class="sn-title">Benefit Activation Report</div>
+      </div>
+      <div class="sn-meta">${range}<br>Generated ${now}</div>
+    </div>
+    <div class="sn-cards">${cards}</div>
+    <table class="sn-table">
+      <thead><tr>
+        <th>Writing Agent</th><th>Manager</th>
+        <th>Total Enrollments</th><th>Total Completed</th><th>Total Completed %</th>
+        <th>Total Attempted</th><th>Total Attempted %</th><th>Total Overall %</th>
+      </tr></thead>
+      <tbody>${overallRow}${body}</tbody>
+    </table>
+    <div class="sn-footer">PolicyPoint · Benefit Activation Report · ${now}</div>`;
+
+  // Briefly bring on-screen for html2canvas (z-index below everything)
+  snap.style.cssText = 'position:fixed;top:0;left:0;z-index:-1;width:1200px;background:white;padding:36px 40px 28px;font-family:Segoe UI,system-ui,sans-serif;';
+
+  html2canvas(snap, { scale:2, backgroundColor:'#ffffff', logging:false, useCORS:true })
+    .then(canvas => {
+      snap.style.cssText = 'position:fixed;top:-99999px;left:0;width:1200px;background:white;padding:36px 40px 28px;font-family:Segoe UI,system-ui,sans-serif;';
+      const a = Object.assign(document.createElement('a'), {
+        href: canvas.toDataURL('image/png'),
+        download: 'BAT_Report_' + new Date().toISOString().slice(0,10) + '.png'
+      });
+      a.click();
+    });
+}
+// Kick off auto-load when DOM is ready
+document.addEventListener('DOMContentLoaded', autoLoad);
+</script>
+</body>
+</html>

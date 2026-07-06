@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — BAT Report Data Upload</title>
+  <style>
+    :root {
+      --primary:  #1F3864;
+      --mid:      #2c4f8a;
+      --light:    #4a7ab5;
+      --bg:       #f0f4f8;
+      --white:    #ffffff;
+      --border:   #d0dce8;
+      --text:     #1a2535;
+      --muted:    #5a6a7e;
+      --green:    #1a7a40;
+      --green-bg: #f0faf4;
+      --red:      #c0392b;
+      --red-bg:   #fdf2f2;
+      --row-alt:  #DEEAF1;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      min-height: 100vh;
+    }
+
+    /* Header */
+    .hdr {
+      background: var(--primary);
+      color: white;
+      padding: 13px 24px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.22);
+    }
+    .hdr-logo  { font-size: 11px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; opacity: 0.75; }
+    .hdr-div   { width: 1px; height: 20px; background: rgba(255,255,255,0.3); }
+    .hdr-title { font-size: 16px; font-weight: 600; }
+    .hdr-back  {
+      margin-left: auto;
+      color: rgba(255,255,255,0.65);
+      text-decoration: none;
+      font-size: 13px;
+    }
+    .hdr-back:hover { color: white; }
+
+    /* Layout */
+    .main { max-width: 860px; margin: 0 auto; padding: 28px 20px 60px; }
+
+    /* Panel */
+    .panel {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 18px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+      overflow: hidden;
+    }
+    .panel-hdr {
+      background: var(--bg);
+      padding: 13px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .panel-title { font-size: 13px; font-weight: 700; color: var(--primary); }
+    .panel-body  { padding: 20px; }
+
+    /* Form elements */
+    label {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--muted);
+      margin-bottom: 5px;
+    }
+    input[type="text"],
+    input[type="password"] {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      font-size: 13px;
+      color: var(--text);
+      background: white;
+    }
+    input[type="text"]:focus,
+    input[type="password"]:focus {
+      outline: 2px solid var(--primary);
+      border-color: var(--primary);
+    }
+    .form-row { margin-bottom: 14px; }
+    .form-hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 20px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 700;
+      transition: all 0.12s;
+    }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--mid); }
+    .btn-secondary {
+      background: white;
+      color: var(--primary);
+      border: 1px solid var(--primary);
+    }
+    .btn-secondary:hover { background: var(--row-alt); }
+    .btn-green { background: var(--green); color: white; }
+    .btn-green:hover { background: #155f32; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* File drop zones */
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.15s;
+      background: var(--bg);
+      position: relative;
+    }
+    .drop-zone:hover,
+    .drop-zone.dragover { border-color: var(--primary); background: #eef3f9; }
+    .drop-zone.loaded   { border-color: var(--green); background: var(--green-bg); border-style: solid; }
+    .drop-zone input[type="file"] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .dz-icon  { font-size: 28px; margin-bottom: 6px; }
+    .dz-name  { font-size: 13px; font-weight: 700; color: var(--primary); margin-bottom: 3px; }
+    .dz-hint  { font-size: 11px; color: var(--muted); }
+    .dz-status { font-size: 12px; font-weight: 600; margin-top: 6px; }
+    .dz-status.ok  { color: var(--green); }
+    .dz-status.err { color: var(--red); }
+
+    .drop-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+    @media (max-width: 600px) { .drop-grid { grid-template-columns: 1fr; } }
+
+    /* Progress / status */
+    .progress-bar {
+      height: 6px;
+      background: var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 12px;
+    }
+    .progress-fill {
+      height: 100%;
+      background: var(--primary);
+      width: 0%;
+      transition: width 0.3s;
+    }
+    .status-msg {
+      margin-top: 12px;
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      display: none;
+    }
+    .status-msg.show { display: block; }
+    .status-msg.ok   { background: var(--green-bg); color: var(--green); border: 1px solid #a8d9b8; }
+    .status-msg.err  { background: var(--red-bg);   color: var(--red);   border: 1px solid #f5b7b7; }
+    .status-msg.info { background: #eef3f9; color: var(--primary); border: 1px solid var(--border); }
+
+    /* Lock screen */
+    #lock-screen {
+      position: fixed; inset: 0; background: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 999;
+    }
+    .lock-box {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 36px 40px;
+      width: 340px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    .lock-logo { font-size: 11px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: var(--primary); opacity: 0.6; margin-bottom: 6px; }
+    .lock-title { font-size: 20px; font-weight: 700; color: var(--primary); margin-bottom: 20px; }
+    .lock-box input {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 15px;
+      text-align: center;
+      letter-spacing: 3px;
+      margin-bottom: 14px;
+    }
+    .lock-box input:focus { outline: 2px solid var(--primary); }
+    .lock-err { color: var(--red); font-size: 13px; margin-top: 8px; }
+
+    /* Help callout */
+    .callout {
+      background: #eef3f9;
+      border-left: 3px solid var(--primary);
+      border-radius: 0 6px 6px 0;
+      padding: 12px 16px;
+      font-size: 13px;
+      color: var(--text);
+      line-height: 1.6;
+    }
+    .callout strong { color: var(--primary); }
+    .callout code {
+      background: rgba(31,56,100,0.1);
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 12px;
+      font-family: monospace;
+    }
+    .callout ol { padding-left: 18px; margin-top: 6px; }
+    .callout li { margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+
+<!-- ── Lock screen ─────────────────────────────────────────────── -->
+<div id="lock-screen">
+  <div class="lock-box">
+    <div class="lock-logo">PolicyPoint</div>
+    <div class="lock-title">Admin Access</div>
+    <input type="password" id="pw-input" placeholder="Enter password" onkeydown="if(event.key==='Enter')checkPW()">
+    <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="checkPW()">Unlock</button>
+    <div class="lock-err" id="pw-err"></div>
+  </div>
+</div>
+
+<!-- ── Main UI (hidden until unlocked) ─────────────────────────── -->
+<div id="admin-ui" style="display:none;">
+
+<header class="hdr">
+  <span class="hdr-logo">PolicyPoint</span>
+  <div class="hdr-div"></div>
+  <span class="hdr-title">BAT Report — Admin Upload</span>
+  <a href="index.html" class="hdr-back">← Back to Report</a>
+</header>
+
+<div class="main">
+
+  <!-- Step 1: GitHub config -->
+  <div class="panel">
+    <div class="panel-hdr">
+      <span class="panel-title">Step 1 — GitHub Settings</span>
+      <span id="gh-status-icon" style="font-size:13px;color:var(--muted);">Not configured</span>
+    </div>
+    <div class="panel-body">
+      <div class="callout" style="margin-bottom:16px;">
+        <strong>One-time setup.</strong> These settings are saved in your browser — you won't need to re-enter them.
+        <ol>
+          <li>Go to <strong>github.com → Settings → Developer settings → Personal access tokens → Fine-grained tokens</strong></li>
+          <li>Generate a token with <strong>Contents: Read and Write</strong> permission on your Netlify repo</li>
+          <li>Paste the token below along with your repo details</li>
+        </ol>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+        <div class="form-row">
+          <label>GitHub Token</label>
+          <input type="password" id="gh-token" placeholder="github_pat_…" oninput="saveGHConfig()">
+          <div class="form-hint">Stored only in this browser</div>
+        </div>
+        <div class="form-row">
+          <label>Repository (owner/repo)</label>
+          <input type="text" id="gh-repo" placeholder="policypoint/bat-report" oninput="saveGHConfig()">
+          <div class="form-hint">e.g. mthomas-pp/bat-report</div>
+        </div>
+        <div class="form-row">
+          <label>Branch</label>
+          <input type="text" id="gh-branch" placeholder="main" oninput="saveGHConfig()">
+        </div>
+      </div>
+      <button class="btn btn-secondary" style="margin-top:4px;" onclick="testGHConfig()">Test Connection</button>
+      <div id="gh-test-msg" class="status-msg"></div>
+    </div>
+  </div>
+
+  <!-- Step 2: Upload files -->
+  <div class="panel">
+    <div class="panel-hdr">
+      <span class="panel-title">Step 2 — Select CSV Files</span>
+    </div>
+    <div class="panel-body">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:14px;">
+        Export each file as CSV from your source system, then drop them below.
+      </p>
+      <div class="drop-grid">
+        <div class="drop-zone" id="dz-detail"
+             ondragover="dzDrag(event,'detail')" ondragleave="dzLeave('detail')" ondrop="dzDrop(event,'detail')">
+          <input type="file" accept=".csv" onchange="dzFile('detail',this)">
+          <div class="dz-icon">📋</div>
+          <div class="dz-name">Detail Report</div>
+          <div class="dz-hint">detail.csv</div>
+          <div class="dz-status" id="ds-detail"></div>
+        </div>
+        <div class="drop-zone" id="dz-policy"
+             ondragover="dzDrag(event,'policy')" ondragleave="dzLeave('policy')" ondrop="dzDrop(event,'policy')">
+          <input type="file" accept=".csv" onchange="dzFile('policy',this)">
+          <div class="dz-icon">📄</div>
+          <div class="dz-name">PolicyIndividuals</div>
+          <div class="dz-hint">policy.csv</div>
+          <div class="dz-status" id="ds-policy"></div>
+        </div>
+        <div class="drop-zone" id="dz-calls"
+             ondragover="dzDrag(event,'calls')" ondragleave="dzLeave('calls')" ondrop="dzDrop(event,'calls')">
+          <input type="file" accept=".csv" onchange="dzFile('calls',this)">
+          <div class="dz-icon">📞</div>
+          <div class="dz-name">Calls</div>
+          <div class="dz-hint">calls.csv</div>
+          <div class="dz-status" id="ds-calls"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3: Deploy -->
+  <div class="panel">
+    <div class="panel-hdr">
+      <span class="panel-title">Step 3 — Save to GitHub &amp; Deploy</span>
+    </div>
+    <div class="panel-body">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">
+        Clicking <strong>Save &amp; Deploy</strong> commits the selected files to your GitHub repo.
+        Netlify will automatically redeploy — the report is typically live within 60 seconds.
+      </p>
+      <button class="btn btn-green" id="deploy-btn" onclick="deploy()" style="font-size:14px;padding:11px 28px;">
+        ✓ Save &amp; Deploy
+      </button>
+      <div class="progress-bar" id="progress-bar" style="display:none;">
+        <div class="progress-fill" id="progress-fill"></div>
+      </div>
+      <div id="deploy-msg" class="status-msg"></div>
+    </div>
+  </div>
+
+  <!-- Info -->
+  <div class="callout">
+    <strong>How it works:</strong> each file is saved to <code>data/detail.csv</code>,
+    <code>data/policy.csv</code>, and <code>data/calls.csv</code> in your GitHub repo.
+    Netlify detects the commit and rebuilds the site automatically.
+    Anyone visiting the report will see the new data without needing to upload anything.
+  </div>
+
+</div><!-- /main -->
+</div><!-- /admin-ui -->
+
+<script>
+// ────────────────────────────────────────────────────────────────
+// Admin password (change this to your preferred password)
+// ────────────────────────────────────────────────────────────────
+const ADMIN_PASSWORD = 'PPbat2026';
+
+function checkPW() {
+  const val = document.getElementById('pw-input').value;
+  if (val === ADMIN_PASSWORD) {
+    document.getElementById('lock-screen').style.display = 'none';
+    document.getElementById('admin-ui').style.display    = 'block';
+    loadGHConfig();
+  } else {
+    document.getElementById('pw-err').textContent = 'Incorrect password.';
+    document.getElementById('pw-input').value = '';
+    document.getElementById('pw-input').focus();
+  }
+}
+
+// ────────────────────────────────────────────────────────────────
+// GitHub config (persisted in localStorage)
+// ────────────────────────────────────────────────────────────────
+function saveGHConfig() {
+  localStorage.setItem('bat_gh_token',  document.getElementById('gh-token').value.trim());
+  localStorage.setItem('bat_gh_repo',   document.getElementById('gh-repo').value.trim());
+  localStorage.setItem('bat_gh_branch', document.getElementById('gh-branch').value.trim() || 'main');
+  updateGHStatus();
+}
+
+function loadGHConfig() {
+  document.getElementById('gh-token').value  = localStorage.getItem('bat_gh_token')  || '';
+  document.getElementById('gh-repo').value   = localStorage.getItem('bat_gh_repo')   || '';
+  document.getElementById('gh-branch').value = localStorage.getItem('bat_gh_branch') || 'main';
+  updateGHStatus();
+}
+
+function getGHConfig() {
+  return {
+    token:  localStorage.getItem('bat_gh_token')  || '',
+    repo:   localStorage.getItem('bat_gh_repo')   || '',
+    branch: localStorage.getItem('bat_gh_branch') || 'main',
+  };
+}
+
+function updateGHStatus() {
+  const { token, repo } = getGHConfig();
+  const el = document.getElementById('gh-status-icon');
+  if (token && repo) {
+    el.textContent = '✓ Configured';
+    el.style.color = 'var(--green)';
+  } else {
+    el.textContent = 'Not configured';
+    el.style.color = 'var(--muted)';
+  }
+}
+
+async function testGHConfig() {
+  const { token, repo } = getGHConfig();
+  const msgEl = document.getElementById('gh-test-msg');
+  if (!token || !repo) {
+    showMsg(msgEl, 'Please fill in the token and repository first.', 'err');
+    return;
+  }
+  showMsg(msgEl, 'Testing connection…', 'info');
+  try {
+    const res = await fetch(`https://api.github.com/repos/${repo}`, {
+      headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json' }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      showMsg(msgEl, `✓ Connected to "${data.full_name}" (${data.visibility})`, 'ok');
+    } else {
+      const err = await res.json();
+      showMsg(msgEl, `Error: ${err.message || res.status}`, 'err');
+    }
+  } catch(e) {
+    showMsg(msgEl, 'Network error: ' + e.message, 'err');
+  }
+}
+
+// ────────────────────────────────────────────────────────────────
+// Drop zone handling
+// ────────────────────────────────────────────────────────────────
+const files = { detail: null, policy: null, calls: null };
+
+function dzDrag(e, type) { e.preventDefault(); document.getElementById('dz-'+type).classList.add('dragover'); }
+function dzLeave(type) { document.getElementById('dz-'+type).classList.remove('dragover'); }
+function dzDrop(e, type) {
+  e.preventDefault();
+  dzLeave(type);
+  const f = e.dataTransfer.files[0];
+  if (f) setFile(type, f);
+}
+function dzFile(type, inp) {
+  if (inp.files[0]) setFile(type, inp.files[0]);
+}
+
+function setFile(type, f) {
+  files[type] = f;
+  const dz = document.getElementById('dz-'+type);
+  const ds = document.getElementById('ds-'+type);
+  dz.classList.add('loaded');
+  ds.textContent = '✓ ' + f.name + ' (' + (f.size/1024).toFixed(1) + ' KB)';
+  ds.className = 'dz-status ok';
+}
+
+// ────────────────────────────────────────────────────────────────
+// Deploy: commit files to GitHub
+// ────────────────────────────────────────────────────────────────
+async function deploy() {
+  const { token, repo, branch } = getGHConfig();
+  const msgEl  = document.getElementById('deploy-msg');
+  const progEl = document.getElementById('progress-bar');
+  const fillEl = document.getElementById('progress-fill');
+  const btn    = document.getElementById('deploy-btn');
+
+  if (!token || !repo) {
+    showMsg(msgEl, 'Please complete Step 1 (GitHub settings) first.', 'err'); return;
+  }
+  if (!files.detail) {
+    showMsg(msgEl, 'At minimum, the Detail Report CSV is required.', 'err'); return;
+  }
+
+  btn.disabled = true;
+  progEl.style.display = 'block';
+  fillEl.style.width = '0%';
+  showMsg(msgEl, 'Uploading to GitHub…', 'info');
+
+  const toUpload = [
+    { key: 'detail', path: 'data/detail.csv' },
+    { key: 'policy', path: 'data/policy.csv' },
+    { key: 'calls',  path: 'data/calls.csv'  },
+  ].filter(f => files[f.key]);
+
+  const ts = new Date().toLocaleString('en-US', {
+    month:'short', day:'numeric', year:'numeric',
+    hour:'numeric', minute:'2-digit', hour12:true
+  });
+
+  let done = 0;
+  const errors = [];
+
+  for (const { key, path } of toUpload) {
+    try {
+      fillEl.style.width = Math.round((done / toUpload.length) * 90) + '%';
+      showMsg(msgEl, `Uploading ${path}…`, 'info');
+
+      // Read file as base64
+      const b64 = await fileToBase64(files[key]);
+
+      // Get current SHA (if file already exists)
+      let sha = null;
+      const getRes = await fetch(
+        `https://api.github.com/repos/${repo}/contents/${path}?ref=${branch}`,
+        { headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json' } }
+      );
+      if (getRes.ok) {
+        const existing = await getRes.json();
+        sha = existing.sha;
+      }
+
+      // Put file
+      const putBody = {
+        message: `BAT data update: ${path} (${ts})`,
+        content: b64,
+        branch:  branch,
+      };
+      if (sha) putBody.sha = sha;
+
+      const putRes = await fetch(
+        `https://api.github.com/repos/${repo}/contents/${path}`,
+        {
+          method:  'PUT',
+          headers: {
+            Authorization:  'Bearer ' + token,
+            Accept:         'application/vnd.github+json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(putBody),
+        }
+      );
+
+      if (!putRes.ok) {
+        const err = await putRes.json();
+        errors.push(`${path}: ${err.message || putRes.status}`);
+      }
+      done++;
+    } catch(e) {
+      errors.push(`${path}: ${e.message}`);
+    }
+  }
+
+  fillEl.style.width = '100%';
+  btn.disabled = false;
+
+  if (errors.length) {
+    showMsg(msgEl, '⚠️ Errors: ' + errors.join('; '), 'err');
+  } else {
+    showMsg(msgEl,
+      `✓ ${done} file${done>1?'s':''} committed to GitHub. Netlify is rebuilding — the report will be live in ~30–60 seconds.`,
+      'ok');
+    // Clear loaded files
+    setTimeout(() => {
+      ['detail','policy','calls'].forEach(t => {
+        files[t] = null;
+        document.getElementById('dz-'+t).classList.remove('loaded');
+        document.getElementById('ds-'+t).textContent = '';
+        document.getElementById('ds-'+t).className = 'dz-status';
+      });
+    }, 3000);
+  }
+}
+
+// ────────────────────────────────────────────────────────────────
+// Helpers
+// ────────────────────────────────────────────────────────────────
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function showMsg(el, msg, type) {
+  el.textContent = msg;
+  el.className   = 'status-msg show ' + type;
+}
+</script>
+</body>
+</html>
